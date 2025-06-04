@@ -1,14 +1,13 @@
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../providers/game_provider.dart';
-import '../widgets/hangman_drawing.dart';
-import '../widgets/letter_button.dart';
-import '../widgets/status_bar.dart';
-import '../widgets/letter_grid.dart';
+import '../widgets/keyboard.dart';
 import '../widgets/hangman_game_over.dart';
 import '../models/game_enums.dart';
+import '../l10n/app_localizations.dart';
 
 class GameScreen extends StatefulWidget {
   final String? category;
@@ -60,9 +59,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       final gameProvider = Provider.of<GameProvider>(context, listen: false);
       gameProvider.initGame(
         category: _getCategoryFromString(widget.category),
-        mode: widget.isMultiplayer ? GameMode.twoPlayer : 
-              widget.isDailyWord ? GameMode.dailyChallenge : 
-              GameMode.singlePlayer,
       );
     });
   }
@@ -110,8 +106,8 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
       context: context,
       barrierDismissible: false,
       barrierColor: Colors.black54,
-      builder: (context) => WillPopScope(
-        onWillPop: () async => false,
+      builder: (context) => PopScope(
+        canPop: false,
         child: FadeTransition(
           opacity: _fadeAnimation,
           child: ScaleTransition(
@@ -386,12 +382,13 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
 
   @override
   Widget build(BuildContext context) {
-    final gameProvider = context.watch<GameProvider>();
-    final theme = Theme.of(context);
     final screenSize = MediaQuery.of(context).size;
     
-    return WillPopScope(
-      onWillPop: () async {
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        
         final shouldPop = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
@@ -409,7 +406,10 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             ],
           ),
         );
-        return shouldPop ?? false;
+        
+        if (shouldPop ?? false) {
+          Navigator.of(context).pop();
+        }
       },
       child: Scaffold(
         body: Container(
@@ -420,72 +420,91 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                theme.colorScheme.primary.withOpacity(0.1),
-                theme.colorScheme.background,
+                Colors.blue.shade900,
+                Colors.blue.shade800,
+                Colors.blue.shade700,
               ],
             ),
           ),
           child: SafeArea(
             child: Stack(
               children: [
-                Column(
-                  children: [
-                    const StatusBar(),
-                    Expanded(
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return SingleChildScrollView(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight,
-                              ),
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const SizedBox(height: 20),
-                                  const HangmanDrawing(),
-                                  const SizedBox(height: 40),
-                                  Container(
-                                    margin: const EdgeInsets.symmetric(horizontal: 20),
-                                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
-                                    decoration: BoxDecoration(
-                                      color: theme.colorScheme.surface,
-                                      borderRadius: BorderRadius.circular(20),
-                                      boxShadow: [
-                                        BoxShadow(
-                                          color: Colors.black.withOpacity(0.1),
-                                          blurRadius: 10,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                      ],
-                                    ),
-                                    child: Text(
-                                      gameProvider.maskedWord,
-                                      style: theme.textTheme.headlineMedium?.copyWith(
-                                        letterSpacing: 8,
-                                        fontWeight: FontWeight.bold,
-                                        color: theme.colorScheme.onSurface,
-                                      ),
-                                    ),
+                // Floating back button
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(30),
+                    child: BackdropFilter(
+                      filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withOpacity(0.25),
+                          shape: BoxShape.circle,
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(0.08),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.black87, size: 22),
+                          onPressed: () async {
+                            final shouldPop = await showDialog<bool>(
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                title: const Text('Exit Game?'),
+                                content: const Text('Are you sure you want to quit this game?'),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, false),
+                                    child: const Text('CANCEL'),
                                   ),
-                                  const SizedBox(height: 40),
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                                    child: ConstrainedBox(
-                                      constraints: BoxConstraints(
-                                        maxHeight: screenSize.height * 0.4,
-                                      ),
-                                      child: const LetterGrid(),
-                                    ),
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(context, true),
+                                    child: const Text('QUIT'),
                                   ),
-                                  const SizedBox(height: 20),
                                 ],
                               ),
-                            ),
-                          );
-                        },
+                            );
+                            if (mounted && (shouldPop ?? false)) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                          tooltip: 'Back',
+                        ),
                       ),
                     ),
+                  ),
+                ),
+                // Main content
+                Column(
+                  children: [
+                    const SizedBox(height: 70), // More space for back button
+                    _buildStatusBar(),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _buildHangmanDrawing(),
+                          const SizedBox(height: 40),
+                          _buildWordDisplay(),
+                        ],
+                      ),
+                    ),
+                    // Fixed keyboard at bottom
+                    Consumer<GameProvider>(
+                      builder: (context, gameProvider, _) => Keyboard(
+                        onKeyPressed: gameProvider.makeGuess,
+                        usedLetters: gameProvider.guessedLetters.toSet(),
+                        word: gameProvider.word,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
                   ],
                 ),
                 Align(
@@ -508,22 +527,249 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
     );
   }
 
-  IconData _getCategoryIcon() {
-    switch (widget.category?.toLowerCase()) {
-      case 'countries':
-        return Icons.flag;
-      case 'technology':
-        return Icons.computer;
-      case 'music':
-        return Icons.music_note;
-      case 'movies':
-        return Icons.movie;
-      case 'sports':
-        return Icons.sports_basketball;
-      case 'food':
-        return Icons.restaurant;
-      default:
-        return Icons.shuffle;
+  Widget _buildStatusBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.white.withOpacity(0.2)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 10,
+            spreadRadius: 0,
+          ),
+        ],
+      ),
+      child: Consumer<GameProvider>(
+        builder: (context, gameProvider, _) => Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatusItem(
+              icon: Icons.favorite,
+              value: gameProvider.lives.toString(),
+              label: AppLocalizations.of(context).lives,
+              color: Colors.redAccent,
+            ),
+            Container(
+              width: 1,
+              height: 32,
+              color: Colors.white.withOpacity(0.2),
+            ),
+            _buildStatusItem(
+              icon: Icons.local_fire_department,
+              value: gameProvider.streak.toString(),
+              label: AppLocalizations.of(context).streak,
+              color: Colors.orangeAccent,
+            ),
+            Container(
+              width: 1,
+              height: 32,
+              color: Colors.white.withOpacity(0.2),
+            ),
+            _buildStatusItem(
+              icon: Icons.star,
+              value: gameProvider.coins.toString(),
+              label: 'Score',
+              color: Colors.yellowAccent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusItem({
+    required IconData icon,
+    required String value,
+    required String label,
+    required Color color,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(
+          icon,
+          color: color,
+          size: 24,
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value,
+          style: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 12,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildHangmanDrawing() {
+    return Consumer<GameProvider>(
+      builder: (context, gameProvider, _) {
+        // Calculate wrong guesses from lives (starting from 6 lives)
+        final wrongGuesses = 6 - gameProvider.lives;
+        return Container(
+          height: 250,
+          width: 200,
+          child: CustomPaint(
+            size: const Size(200, 250),
+            painter: HangmanPainter(
+              wrongGuesses: wrongGuesses,
+              color: Colors.white,
+              strokeWidth: 4,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildWordDisplay() {
+    return Consumer<GameProvider>(
+      builder: (context, gameProvider, _) {
+        final displayText = gameProvider.maskedWord.isEmpty ? '_ _ _ _ _ _' : gameProvider.maskedWord;
+        
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(28),
+            border: Border.all(
+              color: Colors.white.withOpacity(0.2),
+              width: 1,
+            ),
+          ),
+          child: Text(
+            displayText,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 32,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+        );
+      },
+    );
+  }
+}
+
+class HangmanPainter extends CustomPainter {
+  final int wrongGuesses;
+  final Color color;
+  final double strokeWidth;
+
+  HangmanPainter({
+    required this.wrongGuesses,
+    required this.color,
+    required this.strokeWidth,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = strokeWidth
+      ..strokeCap = StrokeCap.round
+      ..style = PaintingStyle.stroke;
+
+    final double width = size.width;
+    final double height = size.height;
+    
+    // Base (1st wrong guess)
+    if (wrongGuesses >= 1) {
+      canvas.drawLine(
+        Offset(width * 0.1, height * 0.9),
+        Offset(width * 0.9, height * 0.9),
+        paint,
+      );
+    }
+
+    // Vertical pole (2nd wrong guess)
+    if (wrongGuesses >= 2) {
+      canvas.drawLine(
+        Offset(width * 0.5, height * 0.9),
+        Offset(width * 0.5, height * 0.1),
+        paint,
+      );
+    }
+
+    // Top horizontal and rope (3rd wrong guess)
+    if (wrongGuesses >= 3) {
+      canvas.drawLine(
+        Offset(width * 0.5, height * 0.1),
+        Offset(width * 0.65, height * 0.1),
+        paint,
+      );
+      // Rope
+      canvas.drawLine(
+        Offset(width * 0.65, height * 0.1),
+        Offset(width * 0.65, height * 0.2),
+        paint,
+      );
+    }
+
+    // Head (4th wrong guess)
+    if (wrongGuesses >= 4) {
+      canvas.drawCircle(
+        Offset(width * 0.65, height * 0.25),
+        width * 0.07,
+        paint,
+      );
+    }
+
+    // Body (5th wrong guess)
+    if (wrongGuesses >= 5) {
+      canvas.drawLine(
+        Offset(width * 0.65, height * 0.32),
+        Offset(width * 0.65, height * 0.5),
+        paint,
+      );
+    }
+
+    // Arms and legs (6th wrong guess - final)
+    if (wrongGuesses >= 6) {
+      // Left arm
+      canvas.drawLine(
+        Offset(width * 0.65, height * 0.35),
+        Offset(width * 0.55, height * 0.45),
+        paint,
+      );
+      // Right arm
+      canvas.drawLine(
+        Offset(width * 0.65, height * 0.35),
+        Offset(width * 0.75, height * 0.45),
+        paint,
+      );
+      // Left leg
+      canvas.drawLine(
+        Offset(width * 0.65, height * 0.5),
+        Offset(width * 0.55, height * 0.65),
+        paint,
+      );
+      // Right leg
+      canvas.drawLine(
+        Offset(width * 0.65, height * 0.5),
+        Offset(width * 0.75, height * 0.65),
+        paint,
+      );
     }
   }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
