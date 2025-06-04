@@ -506,7 +506,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         word: gameProvider.word,
                       ),
                     ),
-                    SizedBox(height: MediaQuery.of(context).padding.bottom + 12), // Reduced from 20 to 12
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 2), // Reduced from 12 to 2
                   ],
                 ),
                 Align(
