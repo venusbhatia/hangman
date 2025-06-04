@@ -1,21 +1,24 @@
 import 'dart:math';
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:confetti/confetti.dart';
 import '../providers/game_provider.dart';
+import '../widgets/hangman_drawing.dart';
+import '../widgets/letter_button.dart';
 import '../widgets/status_bar.dart';
-import '../l10n/app_localizations.dart';
+import '../widgets/letter_grid.dart';
+import '../widgets/hangman_game_over.dart';
 import '../models/game_enums.dart';
-import '../widgets/keyboard_layout.dart';
 
 class GameScreen extends StatefulWidget {
   final String? category;
+  final bool isMultiplayer;
   final bool isDailyWord;
 
   const GameScreen({
     super.key,
     this.category,
+    this.isMultiplayer = false,
     this.isDailyWord = false,
   });
 
@@ -23,48 +26,33 @@ class GameScreen extends StatefulWidget {
   State<GameScreen> createState() => _GameScreenState();
 }
 
-class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
+class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateMixin {
   late ConfettiController _confettiController;
   late AnimationController _animationController;
-  late AnimationController _pulseController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _fadeAnimation;
-  late Animation<double> _pulseAnimation;
   bool _isShowingGameOver = false;
 
   @override
   void initState() {
     super.initState();
     _confettiController = ConfettiController(duration: const Duration(seconds: 3));
-    
     _animationController = AnimationController(
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
-    
-    _pulseController = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    )..repeat();
 
     _scaleAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeOutBack,
+        curve: Curves.elasticOut,
       ),
     );
 
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _animationController,
-        curve: Curves.easeInOut,
-      ),
-    );
-    
-    _pulseAnimation = Tween<double>(begin: 0.95, end: 1.05).animate(
-      CurvedAnimation(
-        parent: _pulseController,
-        curve: Curves.easeInOut,
+        curve: Curves.easeIn,
       ),
     );
 
@@ -72,7 +60,9 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
       final gameProvider = Provider.of<GameProvider>(context, listen: false);
       gameProvider.initGame(
         category: _getCategoryFromString(widget.category),
-        mode: widget.isDailyWord ? GameMode.dailyChallenge : GameMode.singlePlayer,
+        mode: widget.isMultiplayer ? GameMode.twoPlayer : 
+              widget.isDailyWord ? GameMode.dailyChallenge : 
+              GameMode.singlePlayer,
       );
     });
   }
@@ -81,7 +71,6 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   void dispose() {
     _confettiController.dispose();
     _animationController.dispose();
-    _pulseController.dispose();
     super.dispose();
   }
 
@@ -90,6 +79,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     super.didChangeDependencies();
     final gameProvider = Provider.of<GameProvider>(context);
     
+    // Check for game over conditions
     if ((gameProvider.isGameWon || gameProvider.isGameOver) && !_isShowingGameOver) {
       _isShowingGameOver = true;
       if (gameProvider.isGameWon) {
@@ -119,7 +109,7 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     showDialog(
       context: context,
       barrierDismissible: false,
-      barrierColor: Colors.black26,
+      barrierColor: Colors.black54,
       builder: (context) => WillPopScope(
         onWillPop: () async => false,
         child: FadeTransition(
@@ -129,8 +119,205 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
             child: Dialog(
               backgroundColor: Colors.transparent,
               elevation: 0,
-              insetPadding: const EdgeInsets.symmetric(horizontal: 32),
-              child: _buildGameOverContent(won),
+              insetPadding: const EdgeInsets.symmetric(horizontal: 40),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (!won) ...[
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.only(top: 80),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.red.shade400,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(30),
+                                bottom: Radius.circular(20),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(height: 40),
+                                HangmanGameOver(
+                                  color: Colors.white,
+                                  size: 120,
+                                ),
+                                const SizedBox(height: 24),
+                                const Text(
+                                  'OHH... YOU LOST',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  'The word was: ${context.read<GameProvider>().word}',
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 24),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                  children: [
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                                        child: _buildGameOverButton(
+                                          icon: Icons.refresh,
+                                          label: 'NEXT ROUND',
+                                          backgroundColor: Colors.white,
+                                          textColor: Colors.red.shade400,
+                                          onPressed: () {
+                                            _isShowingGameOver = false;
+                                            Navigator.of(context).pop();
+                                            context.read<GameProvider>().initGame();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      child: Padding(
+                                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                                        child: _buildGameOverButton(
+                                          icon: Icons.favorite,
+                                          label: 'KEEP STREAK',
+                                          backgroundColor: Colors.green,
+                                          textColor: Colors.white,
+                                          isAd: true,
+                                          onPressed: () {
+                                            _isShowingGameOver = false;
+                                            Navigator.of(context).pop();
+                                            context.read<GameProvider>().keepStreak();
+                                          },
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: -20,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: const BoxDecoration(
+                                color: Colors.black87,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Text(
+                                'OH\nNO!',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 24,
+                                  fontWeight: FontWeight.bold,
+                                  height: 1.2,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ] else ...[
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.only(top: 80),
+                          child: Container(
+                            padding: const EdgeInsets.all(24),
+                            decoration: BoxDecoration(
+                              color: Colors.green.shade400,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(30),
+                                bottom: Radius.circular(20),
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Text(
+                                  'WELL DONE!',
+                                  style: TextStyle(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.stars_rounded,
+                                      color: Colors.amber.shade300,
+                                      size: 32,
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      '+${context.read<GameProvider>().streak * 10}',
+                                      style: TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.amber.shade300,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 24),
+                                _buildGameOverButton(
+                                  icon: Icons.play_arrow,
+                                  label: 'NEXT WORD',
+                                  backgroundColor: Colors.white,
+                                  textColor: Colors.green.shade400,
+                                  onPressed: () {
+                                    _isShowingGameOver = false;
+                                    Navigator.of(context).pop();
+                                    context.read<GameProvider>().initGame();
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        Positioned(
+                          top: -20,
+                          left: 0,
+                          right: 0,
+                          child: Center(
+                            child: Container(
+                              padding: const EdgeInsets.all(20),
+                              decoration: const BoxDecoration(
+                                color: Colors.black87,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.emoji_events_rounded,
+                                color: Colors.amber,
+                                size: 48,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ],
+              ),
             ),
           ),
         ),
@@ -138,147 +325,60 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildGameOverContent(bool won) {
-    return Container(
-      padding: const EdgeInsets.all(28),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            blurRadius: 40,
-            offset: const Offset(0, 20),
-          ),
-        ],
+  Widget _buildGameOverButton({
+    required IconData icon,
+    required String label,
+    required Color backgroundColor,
+    required Color textColor,
+    required VoidCallback onPressed,
+    bool isAd = false,
+  }) {
+    return ElevatedButton(
+      onPressed: onPressed,
+      style: ElevatedButton.styleFrom(
+        backgroundColor: backgroundColor,
+        foregroundColor: textColor,
+        padding: const EdgeInsets.symmetric(
+          horizontal: 12,
+          vertical: 8,
+        ),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 80,
-            height: 80,
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: won 
-                    ? [const Color(0xFF34C759), const Color(0xFF30D158)]
-                    : [const Color(0xFFFF3B30), const Color(0xFFFF453A)],
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 16),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.bold,
               ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: won 
-                      ? const Color(0xFF34C759).withOpacity(0.3)
-                      : const Color(0xFFFF3B30).withOpacity(0.3),
-                  blurRadius: 20,
-                  offset: const Offset(0, 8),
+            ),
+            if (isAd) ...[
+              const SizedBox(width: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black26,
+                  borderRadius: BorderRadius.circular(12),
                 ),
-              ],
-            ),
-            child: Icon(
-              won ? Icons.check_rounded : Icons.close_rounded,
-              color: Colors.white,
-              size: 40,
-            ),
-          ),
-          
-          const SizedBox(height: 24),
-          
-          Text(
-            won ? 'Fantastic!' : 'Nice Try!',
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w700,
-              color: Color(0xFF1C1C1E),
-            ),
-          ),
-          
-          const SizedBox(height: 12),
-          
-          Text(
-            won 
-                ? 'You guessed: ${context.read<GameProvider>().word}'
-                : 'The word was: ${context.read<GameProvider>().word}',
-            style: const TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w400,
-              color: Color(0xFF3C3C43),
-            ),
-            textAlign: TextAlign.center,
-          ),
-          
-          const SizedBox(height: 32),
-          
-          Row(
-            children: [
-              Expanded(
-                child: _buildDialogButton(
-                  title: 'Next Round',
-                  isPrimary: true,
-                  onPressed: () {
-                    _isShowingGameOver = false;
-                    Navigator.of(context).pop();
-                    context.read<GameProvider>().initGame();
-                  },
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildDialogButton(
-                  title: won ? 'Home' : 'Keep Streak',
-                  isPrimary: false,
-                  onPressed: () {
-                    _isShowingGameOver = false;
-                    Navigator.of(context).pop();
-                    if (won) {
-                      Navigator.of(context).pop();
-                    } else {
-                      context.read<GameProvider>().keepStreak();
-                    }
-                  },
+                child: const Text(
+                  'AD',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
                 ),
               ),
             ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDialogButton({
-    required String title,
-    required bool isPrimary,
-    required VoidCallback onPressed,
-  }) {
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: onPressed,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          decoration: BoxDecoration(
-            color: isPrimary 
-                ? const Color(0xFF007AFF)
-                : const Color(0xFFF2F2F7),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: isPrimary ? [
-              BoxShadow(
-                color: const Color(0xFF007AFF).withOpacity(0.3),
-                blurRadius: 12,
-                offset: const Offset(0, 6),
-              ),
-            ] : null,
-          ),
-          child: Text(
-            title,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontSize: 17,
-              fontWeight: FontWeight.w600,
-              color: isPrimary ? Colors.white : const Color(0xFF007AFF),
-            ),
-          ),
+          ],
         ),
       ),
     );
@@ -287,270 +387,143 @@ class _GameScreenState extends State<GameScreen> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final gameProvider = context.watch<GameProvider>();
-    final l10n = AppLocalizations.of(context);
+    final theme = Theme.of(context);
+    final screenSize = MediaQuery.of(context).size;
     
     return WillPopScope(
       onWillPop: () async {
-        if (gameProvider.currentMode == GameMode.custom) {
-          return true;
-        }
-        return !gameProvider.isGameWon && !gameProvider.isGameOver;
+        final shouldPop = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Exit Game?'),
+            content: const Text('Are you sure you want to quit this game?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('CANCEL'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('QUIT'),
+              ),
+            ],
+          ),
+        );
+        return shouldPop ?? false;
       },
       child: Scaffold(
-        backgroundColor: const Color(0xFFF2F2F7),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFFF2F2F7),
-          elevation: 0,
-          leading: (!gameProvider.isGameWon && !gameProvider.isGameOver) 
-              ? _buildBackButton() 
-              : null,
-          title: Text(
-            gameProvider.currentMode == GameMode.dailyChallenge 
-                ? l10n.dailyChallenge 
-                : l10n.appTitle,
-            style: const TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.w600,
-              color: Color(0xFF1C1C1E),
+        body: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                theme.colorScheme.primary.withOpacity(0.1),
+                theme.colorScheme.background,
+              ],
             ),
           ),
-          centerTitle: true,
-          automaticallyImplyLeading: false,
-        ),
-        body: SafeArea(
-          child: Stack(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(20),
-                child: Column(
+          child: SafeArea(
+            child: Stack(
+              children: [
+                Column(
                   children: [
-                    // Status bar
                     const StatusBar(),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Word display with elegant design
-                    AnimatedBuilder(
-                      animation: _pulseAnimation,
-                      builder: (context, child) {
-                        return Transform.scale(
-                          scale: gameProvider.isGameWon ? _pulseAnimation.value : 1.0,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 32, horizontal: 24),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withOpacity(0.05),
-                                  blurRadius: 20,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  gameProvider.maskedWord,
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 28,
-                                    fontWeight: FontWeight.w700,
-                                    color: gameProvider.isGameWon 
-                                        ? const Color(0xFF34C759)
-                                        : const Color(0xFF1C1C1E),
-                                    letterSpacing: 4,
-                                  ),
-                                ),
-                                
-                                if (gameProvider.isGameWon) ...[
-                                  const SizedBox(height: 16),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                    decoration: BoxDecoration(
-                                      gradient: const LinearGradient(
-                                        colors: [Color(0xFF34C759), Color(0xFF30D158)],
-                                      ),
-                                      borderRadius: BorderRadius.circular(20),
-                                    ),
-                                    child: const Text(
-                                      'Completed!',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Game progress indicator
-                    _buildProgressIndicator(gameProvider),
-                    
-                    const SizedBox(height: 32),
-                    
-                    // Keyboard
                     Expanded(
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(24),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 20,
-                              offset: const Offset(0, 8),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) {
+                          return SingleChildScrollView(
+                            child: ConstrainedBox(
+                              constraints: BoxConstraints(
+                                minHeight: constraints.maxHeight,
+                              ),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  const SizedBox(height: 20),
+                                  const HangmanDrawing(),
+                                  const SizedBox(height: 40),
+                                  Container(
+                                    margin: const EdgeInsets.symmetric(horizontal: 20),
+                                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 30),
+                                    decoration: BoxDecoration(
+                                      color: theme.colorScheme.surface,
+                                      borderRadius: BorderRadius.circular(20),
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.1),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 5),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Text(
+                                      gameProvider.maskedWord,
+                                      style: theme.textTheme.headlineMedium?.copyWith(
+                                        letterSpacing: 8,
+                                        fontWeight: FontWeight.bold,
+                                        color: theme.colorScheme.onSurface,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 40),
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                                    child: ConstrainedBox(
+                                      constraints: BoxConstraints(
+                                        maxHeight: screenSize.height * 0.4,
+                                      ),
+                                      child: const LetterGrid(),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 20),
+                                ],
+                              ),
                             ),
-                          ],
-                        ),
-                        child: const KeyboardLayout(),
+                          );
+                        },
                       ),
                     ),
                   ],
                 ),
-              ),
-              
-              // Confetti overlay
-              Align(
-                alignment: Alignment.topCenter,
-                child: ConfettiWidget(
-                  confettiController: _confettiController,
-                  blastDirection: pi / 2,
-                  maxBlastForce: 5,
-                  minBlastForce: 2,
-                  emissionFrequency: 0.05,
-                  numberOfParticles: 50,
-                  gravity: 0.1,
-                  colors: const [
-                    Color(0xFF007AFF),
-                    Color(0xFF34C759),
-                    Color(0xFFFF9500),
-                    Color(0xFFFF3B30),
-                    Color(0xFF5856D6),
-                    Color(0xFFFF2D92),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBackButton() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: () => Navigator.of(context).pop(),
-          borderRadius: BorderRadius.circular(12),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: ConfettiWidget(
+                    confettiController: _confettiController,
+                    blastDirection: pi / 2,
+                    maxBlastForce: 5,
+                    minBlastForce: 2,
+                    emissionFrequency: 0.05,
+                    numberOfParticles: 50,
+                    gravity: 0.1,
+                  ),
                 ),
               ],
             ),
-            child: const Icon(
-              Icons.arrow_back_ios_rounded,
-              color: Color(0xFF007AFF),
-              size: 20,
-            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildProgressIndicator(GameProvider gameProvider) {
-    final wrongGuesses = 6 - gameProvider.lives;
-    final progressPercentage = wrongGuesses / 6;
-    
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Progress',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600,
-                  color: const Color(0xFF1C1C1E).withOpacity(0.8),
-                ),
-              ),
-              Text(
-                '${gameProvider.lives} lives left',
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w500,
-                  color: gameProvider.lives <= 2 
-                      ? const Color(0xFFFF3B30)
-                      : const Color(0xFF8E8E93),
-                ),
-              ),
-            ],
-          ),
-          
-          const SizedBox(height: 12),
-          
-          Container(
-            height: 8,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF2F2F7),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: FractionallySizedBox(
-              alignment: Alignment.centerLeft,
-              widthFactor: progressPercentage,
-              child: Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: progressPercentage > 0.8
-                        ? [const Color(0xFFFF3B30), const Color(0xFFFF453A)]
-                        : progressPercentage > 0.6
-                            ? [const Color(0xFFFF9500), const Color(0xFFFFCC02)]
-                            : [const Color(0xFF34C759), const Color(0xFF30D158)],
-                  ),
-                  borderRadius: BorderRadius.circular(4),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
+  IconData _getCategoryIcon() {
+    switch (widget.category?.toLowerCase()) {
+      case 'countries':
+        return Icons.flag;
+      case 'technology':
+        return Icons.computer;
+      case 'music':
+        return Icons.music_note;
+      case 'movies':
+        return Icons.movie;
+      case 'sports':
+        return Icons.sports_basketball;
+      case 'food':
+        return Icons.restaurant;
+      default:
+        return Icons.shuffle;
+    }
   }
 }

@@ -1,4 +1,4 @@
-enum GameMode { singlePlayer, dailyChallenge, custom }
+enum GameMode { singlePlayer, dailyChallenge, custom, twoPlayer }
 
 enum GameCategory {
   random,

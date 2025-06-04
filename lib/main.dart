@@ -12,7 +12,7 @@ void main() async {
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
   ]);
-
+  
   // Set system UI overlay style for a premium look
   SystemChrome.setSystemUIOverlayStyle(const SystemUiOverlayStyle(
     statusBarColor: Colors.transparent,
@@ -20,9 +20,9 @@ void main() async {
     systemNavigationBarColor: Colors.transparent,
     systemNavigationBarIconBrightness: Brightness.dark,
   ));
-
+  
   final prefs = await SharedPreferences.getInstance();
-
+  
   runApp(MyApp(prefs: prefs));
 }
 
