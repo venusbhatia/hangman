@@ -506,7 +506,6 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         word: gameProvider.word,
                       ),
                     ),
-                    SizedBox(height: MediaQuery.of(context).padding.bottom + 2), // Reduced from 12 to 2
                   ],
                 ),
                 Align(
@@ -645,24 +644,28 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 20),
-          padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 32),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 24),
           decoration: BoxDecoration(
             color: Colors.white.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(28),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: Colors.white.withOpacity(0.2),
               width: 1,
             ),
           ),
-          child: Text(
-            displayText,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 32,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 4,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Text(
+              displayText,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 3,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.visible,
             ),
-            textAlign: TextAlign.center,
           ),
         );
       },
