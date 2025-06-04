@@ -1,119 +1,104 @@
 import 'package:flutter/material.dart';
+import 'dart:ui';
 
 class HomeHangman extends StatelessWidget {
   const HomeHangman({super.key});
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    
     return CustomPaint(
-      size: const Size(200, 250),
-      painter: _HomeHangmanPainter(),
+      size: const Size(200, 200),
+      painter: _HomeHangmanPainter(
+        color: theme.colorScheme.primary,
+      ),
     );
   }
 }
 
 class _HomeHangmanPainter extends CustomPainter {
+  final Color color;
+
+  _HomeHangmanPainter({required this.color});
+
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = const Color(0xFFFF4D6D)  // Match your app's theme color
+      ..color = color
       ..strokeWidth = 4
       ..strokeCap = StrokeCap.round
       ..style = PaintingStyle.stroke;
 
-    // Calculate dimensions
-    final double width = size.width;
-    final double height = size.height;
-    final double baseWidth = width * 0.8;
-    final double poleHeight = height * 0.7;
-    final double crossBeamWidth = width * 0.6;
-    final double ropeLength = height * 0.15;
-
-    // Draw base line with decorative support
-    final basePath = Path()
-      ..moveTo((width - baseWidth) / 2, height)
-      ..lineTo((width + baseWidth) / 2, height);
-    
-    // Add decorative support at the base
-    final supportPath = Path()
-      ..moveTo(width * 0.3 - 15, height)
-      ..lineTo(width * 0.3, height - 20)
-      ..lineTo(width * 0.3 + 15, height);
-    
-    canvas.drawPath(basePath, paint);
-    canvas.drawPath(supportPath, paint);
-
-    // Draw vertical pole
+    // Draw the complete hangman structure
+    // Base
     canvas.drawLine(
-      Offset(width * 0.3, height),
-      Offset(width * 0.3, height - poleHeight),
+      Offset(size.width * 0.1, size.height * 0.9),
+      Offset(size.width * 0.9, size.height * 0.9),
       paint,
     );
 
-    // Draw cross beam
+    // Vertical pole
     canvas.drawLine(
-      Offset(width * 0.3, height - poleHeight),
-      Offset(width * 0.3 + crossBeamWidth, height - poleHeight),
+      Offset(size.width * 0.3, size.height * 0.9),
+      Offset(size.width * 0.3, size.height * 0.1),
       paint,
     );
 
-    // Draw rope
+    // Horizontal beam
     canvas.drawLine(
-      Offset(width * 0.3 + crossBeamWidth * 0.8, height - poleHeight),
-      Offset(width * 0.3 + crossBeamWidth * 0.8, height - poleHeight + ropeLength),
+      Offset(size.width * 0.3, size.height * 0.1),
+      Offset(size.width * 0.7, size.height * 0.1),
       paint,
     );
 
-    // Draw stick figure
-    final centerX = width * 0.3 + crossBeamWidth * 0.8;
-    final headTop = height - poleHeight + ropeLength;
-    final headRadius = width * 0.08;
-    
+    // Rope
+    canvas.drawLine(
+      Offset(size.width * 0.7, size.height * 0.1),
+      Offset(size.width * 0.7, size.height * 0.2),
+      paint,
+    );
+
     // Head
     canvas.drawCircle(
-      Offset(centerX, headTop + headRadius),
-      headRadius,
+      Offset(size.width * 0.7, size.height * 0.25),
+      size.width * 0.05,
       paint,
     );
 
     // Body
-    final bodyStart = headTop + headRadius * 2;
-    final bodyLength = height * 0.2;
     canvas.drawLine(
-      Offset(centerX, bodyStart),
-      Offset(centerX, bodyStart + bodyLength),
+      Offset(size.width * 0.7, size.height * 0.3),
+      Offset(size.width * 0.7, size.height * 0.5),
       paint,
     );
 
-    // Arms
-    final armsY = bodyStart + bodyLength * 0.2;
-    final armLength = width * 0.12;
+    // Left arm
     canvas.drawLine(
-      Offset(centerX - armLength, armsY),
-      Offset(centerX + armLength, armsY),
+      Offset(size.width * 0.7, size.height * 0.35),
+      Offset(size.width * 0.5, size.height * 0.4),
       paint,
     );
 
-    // Legs
-    final legsStart = bodyStart + bodyLength;
-    final legLength = height * 0.15;
+    // Right arm
     canvas.drawLine(
-      Offset(centerX, legsStart),
-      Offset(centerX - armLength, legsStart + legLength),
-      paint,
-    );
-    canvas.drawLine(
-      Offset(centerX, legsStart),
-      Offset(centerX + armLength, legsStart + legLength),
+      Offset(size.width * 0.7, size.height * 0.35),
+      Offset(size.width * 0.9, size.height * 0.4),
       paint,
     );
 
-    // Add small decorative element at the top joint
-    final jointRadius = paint.strokeWidth / 2;
-    canvas.drawCircle(
-      Offset(width * 0.3 + crossBeamWidth * 0.8, height - poleHeight),
-      jointRadius,
-      paint..style = PaintingStyle.fill,
+    // Left leg
+    canvas.drawLine(
+      Offset(size.width * 0.7, size.height * 0.5),
+      Offset(size.width * 0.5, size.height * 0.6),
+      paint,
+    );
+
+    // Right leg
+    canvas.drawLine(
+      Offset(size.width * 0.7, size.height * 0.5),
+      Offset(size.width * 0.9, size.height * 0.6),
+      paint,
     );
   }
 

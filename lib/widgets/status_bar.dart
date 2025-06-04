@@ -10,105 +10,150 @@ class StatusBar extends StatefulWidget {
   State<StatusBar> createState() => _StatusBarState();
 }
 
-class _StatusBarState extends State<StatusBar> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _scaleAnimation;
+class _StatusBarState extends State<StatusBar> with TickerProviderStateMixin {
+  late AnimationController _pulseController;
+  late AnimationController _bounceController;
+  late Animation<double> _pulseAnimation;
   late Animation<double> _bounceAnimation;
   int _previousLives = 6;
   int _previousStreak = 0;
-  int _previousCoins = 0;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 300),
+    
+    _pulseController = AnimationController(
+      duration: const Duration(milliseconds: 600),
+      vsync: this,
+    );
+    
+    _bounceController = AnimationController(
+      duration: const Duration(milliseconds: 400),
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
+    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.2).animate(
       CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+        parent: _pulseController,
+        curve: Curves.elasticOut,
       ),
     );
 
-    _bounceAnimation = Tween<double>(begin: 1.2, end: 1.0).animate(
+    _bounceAnimation = Tween<double>(begin: 1.0, end: 1.15).animate(
       CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.5, 1.0, curve: Curves.elasticOut),
+        parent: _bounceController,
+        curve: Curves.elasticOut,
       ),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _pulseController.dispose();
+    _bounceController.dispose();
     super.dispose();
   }
 
-  void _triggerAnimation() {
-    _controller.forward(from: 0.0);
+  void _triggerPulseAnimation() {
+    _pulseController.forward().then((_) {
+      _pulseController.reverse();
+    });
+  }
+
+  void _triggerBounceAnimation() {
+    _bounceController.forward().then((_) {
+      _bounceController.reverse();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Consumer<GameProvider>(
       builder: (context, gameProvider, child) {
         // Trigger animations when values change
-        if (gameProvider.lives != _previousLives ||
-            gameProvider.streak != _previousStreak ||
-            gameProvider.coins != _previousCoins) {
-          _triggerAnimation();
+        if (gameProvider.lives != _previousLives) {
+          _triggerPulseAnimation();
+        }
+        
+        if (gameProvider.streak != _previousStreak) {
+          _triggerBounceAnimation();
         }
         
         _previousLives = gameProvider.lives;
         _previousStreak = gameProvider.streak;
-        _previousCoins = gameProvider.coins;
 
         return ClipRRect(
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: BorderRadius.circular(20),
           child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(16),
+                color: Colors.white.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
+                  color: Colors.white.withOpacity(0.3),
+                  width: 1.5,
                 ),
               ),
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                 children: [
+                  // Lives indicator with heart animation
                   Expanded(
-                    child: _buildStatusItem(
-                      icon: Icons.favorite,
-                      value: gameProvider.lives.toString(),
-                      color: Colors.red,
-                      showTimer: true,
+                    child: AnimatedBuilder(
+                      animation: _pulseAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _pulseAnimation.value,
+                          child: _buildStatusItem(
+                            icon: Icons.favorite_rounded,
+                            value: gameProvider.lives,
+                            maxValue: 6,
+                            color: const Color(0xFFFF3B30),
+                            label: 'Lives',
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                  
+                  // Streak indicator with fire animation
                   Expanded(
-                    child: _buildStatusItem(
-                      icon: Icons.local_fire_department,
-                      value: '${gameProvider.streak}',
-                      subtext: 'STREAK',
-                      color: Colors.orange,
+                    child: AnimatedBuilder(
+                      animation: _bounceAnimation,
+                      builder: (context, child) {
+                        return Transform.scale(
+                          scale: _bounceAnimation.value,
+                          child: _buildStatusItem(
+                            icon: Icons.local_fire_department_rounded,
+                            value: gameProvider.streak,
+                            color: const Color(0xFFFF9500),
+                            label: 'Streak',
+                          ),
+                        );
+                      },
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  
+                  Container(
+                    width: 1,
+                    height: 40,
+                    color: Colors.white.withOpacity(0.3),
+                  ),
+                  
+                  // Score/Coins indicator
                   Expanded(
                     child: _buildStatusItem(
-                      icon: Icons.monetization_on,
-                      value: gameProvider.coins.toString(),
-                      color: Colors.amber,
-                      showAdd: true,
+                      icon: Icons.stars_rounded,
+                      value: gameProvider.coins,
+                      color: const Color(0xFFFFD60A),
+                      label: 'Score',
                     ),
                   ),
                 ],
@@ -122,159 +167,97 @@ class _StatusBarState extends State<StatusBar> with SingleTickerProviderStateMix
 
   Widget _buildStatusItem({
     required IconData icon,
-    required String value,
+    required int value,
+    int? maxValue,
     required Color color,
-    String? subtext,
-    bool showTimer = false,
-    bool showAdd = false,
+    required String label,
   }) {
-    final theme = Theme.of(context);
-    
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        double scale = 1.0;
-        if (_controller.status == AnimationStatus.forward) {
-          scale = _scaleAnimation.value;
-        } else if (_controller.status == AnimationStatus.reverse) {
-          scale = _bounceAnimation.value;
-        }
-
-        return Transform.scale(
-          scale: scale,
-          child: child,
-        );
-      },
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(12),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
-            decoration: BoxDecoration(
-              color: theme.colorScheme.surface.withOpacity(0.7),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.2),
-                width: 1,
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        // Icon with gradient background
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                color,
+                color.withOpacity(0.8),
+              ],
+            ),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 8,
+                offset: const Offset(0, 4),
               ),
-            ),
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                return Row(
-                  mainAxisSize: MainAxisSize.max,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      icon,
-                      color: color,
-                      size: 16,
-                    ),
-                    const SizedBox(width: 2),
-                    if (subtext != null) ...[
-                      Expanded(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Text(
-                              value,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.w600,
-                                color: theme.colorScheme.onSurface,
-                                height: 1,
-                                fontSize: 13,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                            Text(
-                              subtext,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelSmall?.copyWith(
-                                color: theme.colorScheme.onSurface.withOpacity(0.7),
-                                letterSpacing: -0.5,
-                                height: 1,
-                                fontSize: 9,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ] else ...[
-                      Expanded(
-                        child: Text(
-                          value,
-                          overflow: TextOverflow.ellipsis,
-                          style: theme.textTheme.titleMedium?.copyWith(
-                            fontWeight: FontWeight.w600,
-                            color: theme.colorScheme.onSurface,
-                            fontSize: 13,
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (showTimer) ...[
-                      const SizedBox(width: 2),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(4),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(4),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1,
-                              ),
-                            ),
-                            child: const Text(
-                              '29:16',
-                              style: TextStyle(
-                                fontSize: 8,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                letterSpacing: -0.5,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                    if (showAdd) ...[
-                      const SizedBox(width: 2),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: BackdropFilter(
-                          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                          child: Container(
-                            padding: const EdgeInsets.all(1),
-                            decoration: BoxDecoration(
-                              color: Colors.pink.shade400.withOpacity(0.9),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.white.withOpacity(0.2),
-                                width: 1,
-                              ),
-                            ),
-                            child: const Icon(
-                              Icons.add,
-                              color: Colors.white,
-                              size: 10,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ],
-                );
-              },
-            ),
+            ],
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 20,
           ),
         ),
-      ),
+        
+        const SizedBox(height: 8),
+        
+        // Value with progress indicator for lives
+        if (maxValue != null) ...[
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(maxValue, (index) {
+              final isActive = index < value;
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 1),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 300),
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: isActive 
+                        ? color 
+                        : Colors.white.withOpacity(0.3),
+                    shape: BoxShape.circle,
+                    boxShadow: isActive ? [
+                      BoxShadow(
+                        color: color.withOpacity(0.5),
+                        blurRadius: 4,
+                        offset: const Offset(0, 2),
+                      ),
+                    ] : null,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ] else ...[
+          Text(
+            value.toString(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+        
+        const SizedBox(height: 4),
+        
+        // Label
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.8),
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
-} 
+}

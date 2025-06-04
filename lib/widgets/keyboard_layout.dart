@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'dart:ui';
 import '../providers/game_provider.dart';
 
 class KeyboardLayout extends StatelessWidget {
@@ -32,14 +33,25 @@ class _EnglishKeyboard extends StatelessWidget {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final keyWidth = (constraints.maxWidth - 20) / 10; // 10 is max keys per row
+        final keyWidth = (constraints.maxWidth - 40) / 10; // Account for spacing
         return Column(
-          children: letters.map((row) {
+          mainAxisSize: MainAxisSize.min,
+          children: letters.asMap().entries.map((entry) {
+            final rowIndex = entry.key;
+            final row = entry.value;
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 4),
+              padding: EdgeInsets.symmetric(
+                vertical: 6,
+                horizontal: rowIndex == 1 ? keyWidth * 0.5 : (rowIndex == 2 ? keyWidth * 1.5 : 0),
+              ),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: row.map((letter) => _buildKey(context, letter, keyWidth)).toList(),
+                children: row.map((letter) => 
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: _buildKey(context, letter, keyWidth - 4),
+                  )
+                ).toList(),
               ),
             );
           }).toList(),
@@ -53,22 +65,28 @@ class _HindiKeyboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const letters = [
-      ['क', 'ख', 'ग', 'घ', 'ङ', 'च', 'छ', 'ज', 'झ', 'ञ'],
-      ['ट', 'ठ', 'ड', 'ढ', 'ण', 'त', 'थ', 'द', 'ध', 'न'],
-      ['प', 'फ', 'ब', 'भ', 'म', 'य', 'र', 'ल', 'व', 'श'],
-      ['ष', 'स', 'ह', 'अ', 'आ', 'इ', 'ई', 'उ', 'ऊ', 'ए'],
+      ['क', 'ख', 'ग', 'घ', 'ङ', 'च', 'छ', 'ज'],
+      ['झ', 'ञ', 'ट', 'ठ', 'ड', 'ढ', 'ण', 'त'],
+      ['थ', 'द', 'ध', 'न', 'प', 'फ', 'ब', 'भ'],
+      ['म', 'य', 'र', 'ल', 'व', 'श', 'ष', 'स'],
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final keyWidth = (constraints.maxWidth - 20) / 10; // 10 is max keys per row
+        final keyWidth = (constraints.maxWidth - 32) / 8; // 8 keys per row
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: letters.map((row) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: row.map((letter) => _buildKey(context, letter, keyWidth)).toList(),
+                children: row.map((letter) => 
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: _buildKey(context, letter, keyWidth - 4),
+                  )
+                ).toList(),
               ),
             );
           }).toList(),
@@ -82,22 +100,28 @@ class _ChineseKeyboard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const letters = [
-      ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十'],
-      ['月', '火', '水', '木', '金', '土', '日', '天', '地', '人'],
-      ['山', '川', '海', '河', '湖', '林', '花', '草', '木', '竹'],
-      ['心', '手', '口', '目', '耳', '足', '头', '身', '家', '国'],
+      ['一', '二', '三', '四', '五', '六', '七', '八'],
+      ['九', '十', '月', '火', '水', '木', '金', '土'],
+      ['日', '天', '地', '人', '山', '川', '海', '河'],
+      ['心', '手', '口', '目', '耳', '足', '头', '身'],
     ];
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final keyWidth = (constraints.maxWidth - 20) / 10; // 10 is max keys per row
+        final keyWidth = (constraints.maxWidth - 32) / 8; // 8 keys per row
         return Column(
+          mainAxisSize: MainAxisSize.min,
           children: letters.map((row) {
             return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 2),
+              padding: const EdgeInsets.symmetric(vertical: 4),
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: row.map((letter) => _buildKey(context, letter, keyWidth)).toList(),
+                children: row.map((letter) => 
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: _buildKey(context, letter, keyWidth - 4),
+                  )
+                ).toList(),
               ),
             );
           }).toList(),
@@ -110,44 +134,71 @@ class _ChineseKeyboard extends StatelessWidget {
 Widget _buildKey(BuildContext context, String letter, double width) {
   final gameProvider = context.watch<GameProvider>();
   final isGuessed = gameProvider.guessedLetters.contains(letter.toLowerCase());
-  final theme = Theme.of(context);
+  final isCorrect = gameProvider.word.toLowerCase().contains(letter.toLowerCase()) && isGuessed;
+  final isWrong = !gameProvider.word.toLowerCase().contains(letter.toLowerCase()) && isGuessed;
 
-  return Padding(
-    padding: const EdgeInsets.all(1),
-    child: SizedBox(
-      width: width,
-      height: width * 1.3,
-      child: ElevatedButton(
-        onPressed: isGuessed ? null : () => gameProvider.makeGuess(letter),
-        style: ElevatedButton.styleFrom(
-          padding: EdgeInsets.zero,
-          backgroundColor: isGuessed ? Colors.grey.shade200 : Colors.white,
-          foregroundColor: theme.colorScheme.primary,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-            side: BorderSide(
-              color: isGuessed ? Colors.grey.shade300 : theme.colorScheme.primary.withOpacity(0.3),
-              width: 1.5,
-            ),
+  return SizedBox(
+    width: width,
+    height: width * 1.1,
+    child: Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: isGuessed ? null : () => gameProvider.makeGuess(letter),
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          decoration: BoxDecoration(
+            color: _getKeyColor(isGuessed, isCorrect, isWrong),
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isGuessed ? null : [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.05),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
           ),
-          elevation: isGuessed ? 0 : 2,
-          shadowColor: theme.colorScheme.primary.withOpacity(0.3),
-        ),
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Padding(
-            padding: const EdgeInsets.all(2.0),
-            child: Text(
-              letter,
+          child: Center(
+            child: AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
               style: TextStyle(
                 fontSize: gameProvider.language == 'English' ? 16 : 18,
-                fontWeight: FontWeight.bold,
-                color: isGuessed ? Colors.grey.shade400 : theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+                color: _getKeyTextColor(isGuessed, isCorrect, isWrong),
               ),
+              child: Text(letter),
             ),
           ),
         ),
       ),
     ),
   );
-} 
+}
+
+Color _getKeyColor(bool isGuessed, bool isCorrect, bool isWrong) {
+  if (!isGuessed) {
+    return const Color(0xFFF2F2F7);
+  }
+  
+  if (isCorrect) {
+    return const Color(0xFF34C759);
+  }
+  
+  if (isWrong) {
+    return const Color(0xFFFF3B30);
+  }
+  
+  return const Color(0xFFE5E5EA);
+}
+
+Color _getKeyTextColor(bool isGuessed, bool isCorrect, bool isWrong) {
+  if (!isGuessed) {
+    return const Color(0xFF1C1C1E);
+  }
+  
+  if (isCorrect || isWrong) {
+    return Colors.white;
+  }
+  
+  return const Color(0xFF8E8E93);
+}

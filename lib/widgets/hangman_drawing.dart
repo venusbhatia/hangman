@@ -10,26 +10,42 @@ class HangmanDrawing extends StatefulWidget {
   State<HangmanDrawing> createState() => _HangmanDrawingState();
 }
 
-class _HangmanDrawingState extends State<HangmanDrawing> with SingleTickerProviderStateMixin {
-  late AnimationController _controller;
-  late List<Animation<double>> _animations;
+class _HangmanDrawingState extends State<HangmanDrawing> 
+    with TickerProviderStateMixin {
+  late AnimationController _shakeController;
+  late AnimationController _fadeController;
+  late Animation<double> _shakeAnimation;
+  late List<Animation<double>> _fadeAnimations;
   int _previousLives = 6;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
+    
+    _shakeController = AnimationController(
       duration: const Duration(milliseconds: 500),
       vsync: this,
     );
+    
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    );
 
-    // Create animations for each part of the hangman
-    _animations = List.generate(6, (index) {
+    _shakeAnimation = Tween<double>(begin: 0, end: 10).animate(
+      CurvedAnimation(
+        parent: _shakeController,
+        curve: Curves.elasticOut,
+      ),
+    );
+
+    // Create fade animations for each hangman part (6 parts total)
+    _fadeAnimations = List.generate(6, (index) {
       final start = index / 6;
       final end = (index + 1) / 6;
       return Tween<double>(begin: 0.0, end: 1.0).animate(
         CurvedAnimation(
-          parent: _controller,
+          parent: _fadeController,
           curve: Interval(start, end, curve: Curves.easeInOut),
         ),
       );
@@ -38,240 +54,264 @@ class _HangmanDrawingState extends State<HangmanDrawing> with SingleTickerProvid
 
   @override
   void dispose() {
-    _controller.dispose();
+    _shakeController.dispose();
+    _fadeController.dispose();
     super.dispose();
+  }
+
+  void _triggerShake() {
+    _shakeController.forward().then((_) {
+      _shakeController.reverse();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    
     return Consumer<GameProvider>(
       builder: (context, gameProvider, child) {
         final currentLives = gameProvider.lives;
         
-        // Trigger animation when lives decrease
+        // Trigger animations when lives decrease
         if (currentLives < _previousLives) {
-          _controller.animateTo(1 - currentLives / 6);
+          _triggerShake();
+          _fadeController.animateTo(1 - currentLives / 6);
         }
         _previousLives = currentLives;
 
-        return ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-            child: Container(
-              height: 200,
-              width: 200,
-              decoration: BoxDecoration(
-                color: theme.colorScheme.surface.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: Colors.white.withOpacity(0.2),
-                  width: 1,
+        return AnimatedBuilder(
+          animation: Listenable.merge([_shakeAnimation, _fadeController]),
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(_shakeAnimation.value * (1 - currentLives / 6), 0),
+              child: Container(
+                width: 200,
+                height: 200,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      Colors.white.withOpacity(0.2),
+                      Colors.white.withOpacity(0.1),
+                    ],
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withOpacity(0.3),
+                    width: 1.5,
+                  ),
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+                    child: CustomPaint(
+                      painter: _HangmanPainter(
+                        lives: currentLives,
+                        fadeAnimations: _fadeAnimations,
+                      ),
+                      size: const Size(200, 200),
+                    ),
+                  ),
                 ),
               ),
-              child: Stack(
-                children: [
-                  // Base
-                  Positioned(
-                    bottom: 10,
-                    left: 20,
-                    right: 20,
-                    child: Container(
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  // Pole
-                  Positioned(
-                    bottom: 10,
-                    left: MediaQuery.of(context).size.width * 0.2,
-                    child: Container(
-                      width: 4,
-                      height: 180,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  // Top beam
-                  Positioned(
-                    top: 10,
-                    left: MediaQuery.of(context).size.width * 0.2,
-                    child: Container(
-                      width: 100,
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  // Rope
-                  Positioned(
-                    top: 10,
-                    left: MediaQuery.of(context).size.width * 0.2 + 96,
-                    child: Container(
-                      width: 4,
-                      height: 30,
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.primary,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  ),
-                  // Head
-                  if (currentLives < 6)
-                    Stack(
-                      children: [
-                        Positioned(
-                          top: 40,
-                          left: MediaQuery.of(context).size.width * 0.2 + 78,
-                          child: FadeTransition(
-                            opacity: _animations[5],
-                            child: Container(
-                              width: 40,
-                              height: 40,
-                              decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: theme.colorScheme.primary,
-                                  width: 4,
-                                ),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  // Body
-                  if (currentLives < 5)
-                    Stack(
-                      children: [
-                        Positioned(
-                          top: 80,
-                          left: MediaQuery.of(context).size.width * 0.2 + 96,
-                          child: FadeTransition(
-                            opacity: _animations[4],
-                            child: Container(
-                              width: 4,
-                              height: 60,
-                              decoration: BoxDecoration(
-                                color: theme.colorScheme.primary,
-                                borderRadius: BorderRadius.circular(2),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  // Left arm
-                  if (currentLives < 4)
-                    Stack(
-                      children: [
-                        Positioned(
-                          top: 90,
-                          left: MediaQuery.of(context).size.width * 0.2 + 96,
-                          child: FadeTransition(
-                            opacity: _animations[3],
-                            child: Transform.rotate(
-                              angle: -0.5,
-                              child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  // Right arm
-                  if (currentLives < 3)
-                    Stack(
-                      children: [
-                        Positioned(
-                          top: 90,
-                          left: MediaQuery.of(context).size.width * 0.2 + 60,
-                          child: FadeTransition(
-                            opacity: _animations[2],
-                            child: Transform.rotate(
-                              angle: 0.5,
-                              child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  // Left leg
-                  if (currentLives < 2)
-                    Stack(
-                      children: [
-                        Positioned(
-                          top: 140,
-                          left: MediaQuery.of(context).size.width * 0.2 + 96,
-                          child: FadeTransition(
-                            opacity: _animations[1],
-                            child: Transform.rotate(
-                              angle: -0.5,
-                              child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  // Right leg
-                  if (currentLives < 1)
-                    Stack(
-                      children: [
-                        Positioned(
-                          top: 140,
-                          left: MediaQuery.of(context).size.width * 0.2 + 60,
-                          child: FadeTransition(
-                            opacity: _animations[0],
-                            child: Transform.rotate(
-                              angle: 0.5,
-                              child: Container(
-                                width: 40,
-                                height: 4,
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.primary,
-                                  borderRadius: BorderRadius.circular(2),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                ],
-              ),
-            ),
-          ),
+            );
+          },
         );
       },
     );
   }
-} 
+}
+
+class _HangmanPainter extends CustomPainter {
+  final int lives;
+  final List<Animation<double>> fadeAnimations;
+
+  _HangmanPainter({
+    required this.lives,
+    required this.fadeAnimations,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Base structure (always visible)
+    _drawBase(canvas, size);
+    _drawPole(canvas, size);
+    _drawBeam(canvas, size);
+    _drawRope(canvas, size);
+
+    // Hangman parts (fade in as lives decrease)
+    if (lives < 6) _drawHead(canvas, size, fadeAnimations[5].value);
+    if (lives < 5) _drawBody(canvas, size, fadeAnimations[4].value);
+    if (lives < 4) _drawLeftArm(canvas, size, fadeAnimations[3].value);
+    if (lives < 3) _drawRightArm(canvas, size, fadeAnimations[2].value);
+    if (lives < 2) _drawLeftLeg(canvas, size, fadeAnimations[1].value);
+    if (lives < 1) _drawRightLeg(canvas, size, fadeAnimations[0].value);
+  }
+
+  void _drawBase(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.9)
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.1, size.height * 0.9),
+      Offset(size.width * 0.9, size.height * 0.9),
+      paint,
+    );
+  }
+
+  void _drawPole(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.9)
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.2, size.height * 0.9),
+      Offset(size.width * 0.2, size.height * 0.1),
+      paint,
+    );
+  }
+
+  void _drawBeam(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.9)
+      ..strokeWidth = 4
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.2, size.height * 0.1),
+      Offset(size.width * 0.6, size.height * 0.1),
+      paint,
+    );
+  }
+
+  void _drawRope(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withOpacity(0.9)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.6, size.height * 0.1),
+      Offset(size.width * 0.6, size.height * 0.25),
+      paint,
+    );
+  }
+
+  void _drawHead(Canvas canvas, Size size, double opacity) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+      ..strokeWidth = 3
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round;
+
+    // Head circle with gradient effect
+    final center = Offset(size.width * 0.6, size.height * 0.35);
+    final radius = size.width * 0.08;
+    
+    canvas.drawCircle(center, radius, paint);
+    
+    // Eyes (X marks)
+    if (opacity > 0.5) {
+      final eyePaint = Paint()
+        ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+        ..strokeWidth = 2
+        ..strokeCap = StrokeCap.round;
+      
+      // Left eye X
+      canvas.drawLine(
+        Offset(center.dx - radius * 0.4, center.dy - radius * 0.3),
+        Offset(center.dx - radius * 0.1, center.dy - radius * 0.1),
+        eyePaint,
+      );
+      canvas.drawLine(
+        Offset(center.dx - radius * 0.1, center.dy - radius * 0.3),
+        Offset(center.dx - radius * 0.4, center.dy - radius * 0.1),
+        eyePaint,
+      );
+      
+      // Right eye X
+      canvas.drawLine(
+        Offset(center.dx + radius * 0.1, center.dy - radius * 0.3),
+        Offset(center.dx + radius * 0.4, center.dy - radius * 0.1),
+        eyePaint,
+      );
+      canvas.drawLine(
+        Offset(center.dx + radius * 0.4, center.dy - radius * 0.3),
+        Offset(center.dx + radius * 0.1, center.dy - radius * 0.1),
+        eyePaint,
+      );
+    }
+  }
+
+  void _drawBody(Canvas canvas, Size size, double opacity) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.6, size.height * 0.43),
+      Offset(size.width * 0.6, size.height * 0.7),
+      paint,
+    );
+  }
+
+  void _drawLeftArm(Canvas canvas, Size size, double opacity) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.6, size.height * 0.5),
+      Offset(size.width * 0.45, size.height * 0.6),
+      paint,
+    );
+  }
+
+  void _drawRightArm(Canvas canvas, Size size, double opacity) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.6, size.height * 0.5),
+      Offset(size.width * 0.75, size.height * 0.6),
+      paint,
+    );
+  }
+
+  void _drawLeftLeg(Canvas canvas, Size size, double opacity) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.6, size.height * 0.7),
+      Offset(size.width * 0.45, size.height * 0.85),
+      paint,
+    );
+  }
+
+  void _drawRightLeg(Canvas canvas, Size size, double opacity) {
+    final paint = Paint()
+      ..color = const Color(0xFFFF3B30).withOpacity(opacity)
+      ..strokeWidth = 3
+      ..strokeCap = StrokeCap.round;
+
+    canvas.drawLine(
+      Offset(size.width * 0.6, size.height * 0.7),
+      Offset(size.width * 0.75, size.height * 0.85),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
+}
