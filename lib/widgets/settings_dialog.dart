@@ -165,21 +165,21 @@ class _SettingsDialogState extends State<SettingsDialog>
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     // Language section
-                                    _buildSectionHeader('Language'),
+                                    _buildSectionHeader(l10n.language),
                                     const SizedBox(height: 16),
                                     _buildLanguageSelector(gameProvider),
                                     
                                     const SizedBox(height: 32),
                                     
                                     // Game stats section
-                                    _buildSectionHeader('Statistics'),
+                                    _buildSectionHeader(l10n.statistics),
                                     const SizedBox(height: 16),
                                     _buildStatsCard(gameProvider),
                                     
                                     const SizedBox(height: 32),
                                     
                                     // Social section
-                                    _buildSectionHeader('Connect'),
+                                    _buildSectionHeader(l10n.connect),
                                     const SizedBox(height: 16),
                                     _buildSocialSection(),
                                   ],
@@ -284,6 +284,7 @@ class _SettingsDialogState extends State<SettingsDialog>
   }
 
   Widget _buildStatsCard(GameProvider gameProvider) {
+    final l10n = AppLocalizations.of(context);
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -308,7 +309,7 @@ class _SettingsDialogState extends State<SettingsDialog>
         children: [
           Expanded(
             child: _buildStatItem(
-              'Current Streak',
+              l10n.currentStreak,
               gameProvider.streak.toString(),
               Icons.local_fire_department_rounded,
             ),
@@ -320,7 +321,7 @@ class _SettingsDialogState extends State<SettingsDialog>
           ),
           Expanded(
             child: _buildStatItem(
-              'Best Streak',
+              l10n.bestStreak,
               gameProvider.maxStreak.toString(),
               Icons.emoji_events_rounded,
             ),
@@ -332,7 +333,7 @@ class _SettingsDialogState extends State<SettingsDialog>
           ),
           Expanded(
             child: _buildStatItem(
-              'Total Score',
+              l10n.totalScore,
               gameProvider.coins.toString(),
               Icons.stars_rounded,
             ),

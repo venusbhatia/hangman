@@ -143,9 +143,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                   size: 120,
                                 ),
                                 const SizedBox(height: 24),
-                                const Text(
-                                  'OHH... YOU LOST',
-                                  style: TextStyle(
+                                Text(
+                                  AppLocalizations.of(context).ohYouLost,
+                                  style: const TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -153,7 +153,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 ),
                                 const SizedBox(height: 16),
                                 Text(
-                                  'The word was: ${context.read<GameProvider>().word}',
+                                  '${AppLocalizations.of(context).theWordWas} ${context.read<GameProvider>().word}',
                                   style: const TextStyle(
                                     fontSize: 18,
                                     color: Colors.white,
@@ -168,7 +168,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                         padding: const EdgeInsets.symmetric(horizontal: 4),
                                         child: _buildGameOverButton(
                                           icon: Icons.refresh,
-                                          label: 'NEXT ROUND',
+                                          label: AppLocalizations.of(context).nextRound,
                                           backgroundColor: Colors.white,
                                           textColor: Colors.red.shade400,
                                           onPressed: () {
@@ -184,7 +184,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                         padding: const EdgeInsets.symmetric(horizontal: 4),
                                         child: _buildGameOverButton(
                                           icon: Icons.favorite,
-                                          label: 'KEEP STREAK',
+                                          label: AppLocalizations.of(context).keepStreak,
                                           backgroundColor: Colors.green,
                                           textColor: Colors.white,
                                           isAd: true,
@@ -246,9 +246,9 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Text(
-                                  'WELL DONE!',
-                                  style: TextStyle(
+                                Text(
+                                  AppLocalizations.of(context).wellDone,
+                                  style: const TextStyle(
                                     fontSize: 28,
                                     fontWeight: FontWeight.bold,
                                     color: Colors.white,
@@ -277,7 +277,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                                 const SizedBox(height: 24),
                                 _buildGameOverButton(
                                   icon: Icons.play_arrow,
-                                  label: 'NEXT WORD',
+                                  label: AppLocalizations.of(context).nextWord,
                                   backgroundColor: Colors.white,
                                   textColor: Colors.green.shade400,
                                   onPressed: () {
@@ -392,16 +392,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
         final shouldPop = await showDialog<bool>(
           context: context,
           builder: (context) => AlertDialog(
-            title: const Text('Exit Game?'),
-            content: const Text('Are you sure you want to quit this game?'),
+            title: Text(AppLocalizations.of(context).exitGame),
+            content: Text(AppLocalizations.of(context).exitGameContent),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(context, false),
-                child: const Text('CANCEL'),
+                child: Text(AppLocalizations.of(context).cancel),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(context, true),
-                child: const Text('QUIT'),
+                child: Text(AppLocalizations.of(context).quit),
               ),
             ],
           ),
@@ -457,16 +457,16 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                             final shouldPop = await showDialog<bool>(
                               context: context,
                               builder: (context) => AlertDialog(
-                                title: const Text('Exit Game?'),
-                                content: const Text('Are you sure you want to quit this game?'),
+                                title: Text(AppLocalizations.of(context).exitGame),
+                                content: Text(AppLocalizations.of(context).exitGameContent),
                                 actions: [
                                   TextButton(
                                     onPressed: () => Navigator.pop(context, false),
-                                    child: const Text('CANCEL'),
+                                    child: Text(AppLocalizations.of(context).cancel),
                                   ),
                                   TextButton(
                                     onPressed: () => Navigator.pop(context, true),
-                                    child: const Text('QUIT'),
+                                    child: Text(AppLocalizations.of(context).quit),
                                   ),
                                 ],
                               ),
@@ -487,16 +487,18 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                     const SizedBox(height: 70), // More space for back button
                     _buildStatusBar(),
                     Expanded(
+                      flex: 2, // Reduced flex to give more space to keyboard
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _buildHangmanDrawing(),
-                          const SizedBox(height: 40),
+                          const SizedBox(height: 20), // Reduced spacing
                           _buildWordDisplay(),
                         ],
                       ),
                     ),
-                    // Fixed keyboard at bottom
+                    const SizedBox(height: 20), // Add space before keyboard
+                    // Keyboard positioned lower with more space
                     Consumer<GameProvider>(
                       builder: (context, gameProvider, _) => Keyboard(
                         onKeyPressed: gameProvider.makeGuess,
@@ -504,7 +506,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
                         word: gameProvider.word,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    SizedBox(height: MediaQuery.of(context).padding.bottom + 12), // Reduced from 20 to 12
                   ],
                 ),
                 Align(
@@ -572,7 +574,7 @@ class _GameScreenState extends State<GameScreen> with SingleTickerProviderStateM
             _buildStatusItem(
               icon: Icons.star,
               value: gameProvider.coins.toString(),
-              label: 'Score',
+              label: AppLocalizations.of(context).score,
               color: Colors.yellowAccent,
             ),
           ],

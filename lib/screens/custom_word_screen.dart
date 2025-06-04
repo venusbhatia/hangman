@@ -28,7 +28,7 @@ class _CustomWordScreenState extends State<CustomWordScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Custom Word'),
-        backgroundColor: Colors.transparent,
+        backgroundColor: theme.colorScheme.primary.withOpacity(0.9),
         elevation: 0,
       ),
       body: Container(
@@ -37,7 +37,7 @@ class _CustomWordScreenState extends State<CustomWordScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              theme.colorScheme.primary.withOpacity(0.1),
+              theme.colorScheme.primary.withOpacity(0.9),
               theme.colorScheme.background,
             ],
           ),
@@ -52,6 +52,7 @@ class _CustomWordScreenState extends State<CustomWordScreen> {
                   'Play with Friends!',
                   style: TextStyle(
                     fontSize: 24,
+                    color: Colors.white,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
@@ -60,7 +61,7 @@ class _CustomWordScreenState extends State<CustomWordScreen> {
                   'Enter a word for your friend to guess. Make sure they\'re not looking at your screen!',
                   style: TextStyle(
                     fontSize: 16,
-                    color: Colors.grey,
+                    color: Colors.white,
                   ),
                 ),
                 const SizedBox(height: 32),

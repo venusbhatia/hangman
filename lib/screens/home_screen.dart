@@ -140,8 +140,8 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                   
                   // Game mode cards
                   _buildGameModeCard(
-                    title: 'Play Game',
-                    subtitle: 'Choose from 8 categories',
+                    title: l10n.playGame,
+                    subtitle: l10n.chooseFromCategories,
                     icon: Icons.play_circle_filled,
                     gradient: const LinearGradient(
                       begin: Alignment.topLeft,
@@ -157,7 +157,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                     children: [
                       Expanded(
                         child: _buildCompactCard(
-                          title: 'Daily\nChallenge',
+                          title: l10n.dailyChallenge,
                           icon: Icons.calendar_today_rounded,
                           gradient: const LinearGradient(
                             colors: [Color(0xFF34C759), Color(0xFF30D158)],
@@ -172,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildCompactCard(
-                          title: 'Custom\nWord',
+                          title: l10n.customWord,
                           icon: Icons.edit_rounded,
                           gradient: const LinearGradient(
                             colors: [Color(0xFFFF9500), Color(0xFFFF6B00)],
@@ -604,9 +604,9 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Your Progress',
-          style: TextStyle(
+        Text(
+          AppLocalizations.of(context).yourProgress,
+          style: const TextStyle(
             fontSize: 24,
             fontWeight: FontWeight.w700,
             color: Color(0xFF1C1C1E),
@@ -632,7 +632,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
             children: [
               Expanded(
                 child: _buildProgressItem(
-                  'Best Streak',
+                  AppLocalizations.of(context).bestStreak,
                   '${gameProvider.maxStreak}',
                   Icons.emoji_events_rounded,
                   const Color(0xFFFF9500),
@@ -647,7 +647,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               
               Expanded(
                 child: _buildProgressItem(
-                  'Total Score',
+                  AppLocalizations.of(context).totalScore,
                   '${gameProvider.coins}',
                   Icons.stars_rounded,
                   const Color(0xFF007AFF),
@@ -662,7 +662,7 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
               
               Expanded(
                 child: _buildProgressItem(
-                  'Games Won',
+                  AppLocalizations.of(context).gamesWon,
                   '${gameProvider.maxStreak > 0 ? gameProvider.maxStreak * 2 : 0}',
                   Icons.check_circle_rounded,
                   const Color(0xFF34C759),
